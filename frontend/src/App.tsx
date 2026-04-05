@@ -18,7 +18,11 @@ const CARDS_PER_PAGE = 8;
 const STORAGE_KEY = 'dumplinks_cards_v1';
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<User | null>(authService.getCurrentUser());
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    authService.getCurrentUser().then(setCurrentUser);
+  }, []);
 
   const [allCards, setAllCards] = useState<CardData[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
