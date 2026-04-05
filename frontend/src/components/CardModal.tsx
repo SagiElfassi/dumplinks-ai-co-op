@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { CardData, ShoppingDetails, RecipeDetails, TravelDetails, RestaurantDetails, ReadLaterDetails, HealthFitnessDetails, EducationDetails, DiyCraftsDetails, ParentingDetails, FinanceDetails } from '../types';
-import { CardType, Intent } from '../types';
+import { CardType } from '../types';
 import { Tag } from './common/Tag';
 import { 
   ShoppingIcon, 
@@ -19,7 +19,6 @@ import {
   PencilIcon, 
   CheckIcon, 
   MapPinIcon, 
-  PhoneIcon, 
   CalendarIcon, 
   UtensilsIcon, 
   ClockIcon, 

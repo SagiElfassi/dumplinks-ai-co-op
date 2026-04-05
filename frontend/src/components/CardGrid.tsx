@@ -41,7 +41,7 @@ interface CardGridProps {
   onCardTypeClick: (cardType: CardTypeEnum | null) => void;
   onUpdateCard: (card: CardData) => void;
   onShowToast: (message: string, type: ToastType) => void;
-  searchInputRef: React.RefObject<HTMLInputElement>;
+  searchInputRef: React.RefObject<HTMLInputElement | null>;
   groupBy: GroupByOption;
   onGroupByChange: (option: GroupByOption) => void;
   showFavoritesOnly: boolean;

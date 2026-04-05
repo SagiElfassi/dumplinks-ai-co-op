@@ -16,7 +16,7 @@ const PLACEHOLDERS = [
 
 export const LinkInputForm: React.FC<LinkInputFormProps> = ({ onSubmit, isLoading }) => {
   const [url, setUrl] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
+
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isPlaceholderFading, setIsPlaceholderFading] = useState(false);
   const [isValidUrl, setIsValidUrl] = useState(false);
@@ -69,8 +69,7 @@ export const LinkInputForm: React.FC<LinkInputFormProps> = ({ onSubmit, isLoadin
                     type="text"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    onFocus={() => setIsFocused(true)}
-                    onBlur={() => setIsFocused(false)}
+
                     className="block w-full pl-12 pr-4 bg-transparent border-none text-white text-lg focus:ring-0 focus:outline-none font-medium h-full"
                     disabled={isLoading}
                 />
