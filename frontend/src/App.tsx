@@ -2,10 +2,9 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Header } from './components/Header';
 import { LinkInputForm } from './components/LinkInputForm';
 import { CardGrid } from './components/CardGrid';
-import { processLink, processSearchQuery } from './services/geminiService';
+import { processLink, parseSearchQuery, getCards, addCard, updateCard, deleteCard } from './services/dataService';
 import type { CardData, SearchFilters, CardType, User, GroupByOption } from './types';
 import { CardModal } from './components/CardModal';
-import { MOCK_CARDS } from './constants';
 import * as authService from './services/authService';
 import { LandingPage } from './components/LandingPage';
 import { ProfileModal } from './components/ProfileModal';
@@ -15,7 +14,6 @@ import { Toast } from './components/Toast';
 import type { ToastType } from './components/Toast';
 
 const CARDS_PER_PAGE = 8;
-const STORAGE_KEY = 'dumplinks_cards_v1';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -24,13 +22,7 @@ const App: React.FC = () => {
     authService.getCurrentUser().then(setCurrentUser);
   }, []);
 
-  const [allCards, setAllCards] = useState<CardData[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try { return JSON.parse(saved); } catch { /* ignore */ }
-    }
-    return [];
-  });
+  const [allCards, setAllCards] = useState<CardData[]>([]);
 
   const [visibleCardCount, setVisibleCardCount] = useState(CARDS_PER_PAGE);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -57,20 +49,10 @@ const App: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (currentUser && allCards.length === 0) {
-      const hasLoadedBefore = localStorage.getItem('dumplinks_has_loaded');
-      if (!hasLoadedBefore) {
-        setAllCards(MOCK_CARDS);
-        localStorage.setItem('dumplinks_has_loaded', 'true');
-      }
+    if (currentUser) {
+      getCards().then(setAllCards).catch(() => showToast('Failed to load cards', 'error'));
     }
   }, [currentUser]);
-
-  useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allCards));
-    }
-  }, [allCards, currentUser]);
 
   const showToast = useCallback((message: string, type: ToastType = 'success') => {
     setToast({ message, type, isVisible: true });
@@ -107,7 +89,6 @@ const App: React.FC = () => {
     authService.logout();
     setCurrentUser(null);
     setAllCards([]);
-    localStorage.removeItem(STORAGE_KEY);
   };
 
   const handleProfileSave = async (updatedData: Partial<User>) => {
@@ -130,7 +111,6 @@ const App: React.FC = () => {
       await authService.deleteAccount();
       setIsConfirmDeleteModalOpen(false);
       handleLogout();
-      localStorage.removeItem(STORAGE_KEY);
     } catch {
       showToast('Failed to delete account', 'error');
     } finally {
@@ -143,8 +123,8 @@ const App: React.FC = () => {
     setError(null);
     try {
       const newCardData = await processLink(url);
-      const newCard: CardData = { ...newCardData, id: Date.now().toString(), date: new Date().toISOString() };
-      setAllCards(prev => [newCard, ...prev]);
+      const saved = await addCard({ ...newCardData, id: Date.now().toString(), date: new Date().toISOString() });
+      setAllCards(prev => [saved, ...prev]);
       showToast('Link dumped successfully!', 'success');
     } catch {
       setError('Failed to process the link. Please try a different URL.');
@@ -229,7 +209,7 @@ const App: React.FC = () => {
     setActiveCardType(null);
     setShowFavoritesOnly(false);
     try {
-      const filters = await processSearchQuery(query);
+      const filters = await parseSearchQuery(query);
       setSmartFilters(filters);
     } catch {
       setError("Sorry, I couldn't process that search.");
@@ -262,15 +242,25 @@ const App: React.FC = () => {
   const handleCardClick = (card: CardData) => setSelectedCard(card);
   const handleCloseModal = () => setSelectedCard(null);
 
-  const handleUpdateCard = (updatedCard: CardData) => {
-    setAllCards(allCards.map(card => card.id === updatedCard.id ? updatedCard : card));
-    setSelectedCard(prev => prev?.id === updatedCard.id ? updatedCard : prev);
+  const handleUpdateCard = async (updatedCard: CardData) => {
+    try {
+      const saved = await updateCard(updatedCard);
+      setAllCards(allCards.map(card => card.id === saved.id ? saved : card));
+      setSelectedCard(prev => prev?.id === saved.id ? saved : prev);
+    } catch {
+      showToast('Failed to update card', 'error');
+    }
   };
 
-  const handleDeleteCard = (cardId: string) => {
-    setAllCards(allCards.filter(card => card.id !== cardId));
-    setSelectedCard(null);
-    showToast('Memory deleted', 'info');
+  const handleDeleteCard = async (cardId: string) => {
+    try {
+      await deleteCard(cardId);
+      setAllCards(allCards.filter(card => card.id !== cardId));
+      setSelectedCard(null);
+      showToast('Memory deleted', 'info');
+    } catch {
+      showToast('Failed to delete card', 'error');
+    }
   };
 
   if (!currentUser) {
