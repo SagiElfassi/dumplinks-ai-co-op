@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Header } from './components/Header';
 import { LinkInputForm } from './components/LinkInputForm';
 import { CardGrid } from './components/CardGrid';
-import { processLink, processSearchQuery } from './services/geminiService';
+import { processSearchQuery } from './services/geminiService';
+import { processLink } from './services/dataService';
 import type { CardData, SearchFilters, CardType, User, GroupByOption } from './types';
 import { CardModal } from './components/CardModal';
 import { MOCK_CARDS } from './constants';

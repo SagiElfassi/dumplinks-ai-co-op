@@ -29,3 +29,6 @@ export const updateCard = async (card: CardData): Promise<CardData> =>
 
 export const deleteCard = async (cardId: string): Promise<void> =>
   apiRequest(`/cards/${cardId}`, { method: 'DELETE' });
+
+export const processLink = async (url: string): Promise<Omit<CardData, 'id' | 'date'>> =>
+  apiRequest('/links/process', { method: 'POST', body: JSON.stringify({ url }) });
