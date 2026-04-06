@@ -3,7 +3,7 @@ services:
     name: dumplinks-ai-co-op
     runtime: node
     rootDir: backend
-    buildCommand: npm install --no-audit --no-fund && npm run build
+    buildCommand: npm install --omit=dev --no-audit --no-fund
     startCommand: node dist/main
     nodeVersion: 20
     envVars:

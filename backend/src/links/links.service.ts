@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { GoogleGenAI, Type } from '@google/genai';
 
 const CARD_TYPES = [
   'SHOPPING',
@@ -31,11 +31,11 @@ const INTENTS = [
 
 @Injectable()
 export class LinksService {
-  private ai: GoogleGenerativeAI | null = null;
+  private ai: GoogleGenAI | null = null;
 
   constructor(config: ConfigService) {
     const key = config.get<string>('GEMINI_API_KEY');
-    if (key) this.ai = new GoogleGenerativeAI(key);
+    if (key) this.ai = new GoogleGenAI({ apiKey: key });
   }
 
   async processLink(url: string) {
@@ -63,15 +63,6 @@ export class LinksService {
       };
     }
 
-    const model = this.ai.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        responseSchema: this.buildSchema() as any,
-      },
-    });
-
     const prompt = `Analyze this URL and page content. Return a JSON object.
 URL: ${url}
 Page Title: ${metadata?.title || 'N/A'}
@@ -79,11 +70,18 @@ Page Description: ${metadata?.description || 'N/A'}
 Site Name: ${metadata?.siteName || hostname}
 Page Text Excerpt: ${metadata?.rawText?.substring(0, 3000) || 'N/A'}`;
 
-    const result = await model.generateContent(prompt);
+    const result = await this.ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        responseSchema: this.buildSchema() as any,
+      },
+    });
 
-    // Gemini returns untyped JSON — safe to disable here
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const p: Record<string, any> = JSON.parse(result.response.text() || '{}');
+    const p: Record<string, any> = JSON.parse(result.text || '{}');
 
     /* eslint-disable @typescript-eslint/no-unsafe-assignment */
     return {
@@ -209,74 +207,71 @@ Page Text Excerpt: ${metadata?.rawText?.substring(0, 3000) || 'N/A'}`;
   async parseSearchQuery(query: string) {
     if (!this.ai) return { searchTerm: query };
 
-    const str = { type: SchemaType.STRING };
-    const num = { type: SchemaType.NUMBER };
+    const str = { type: Type.STRING };
+    const num = { type: Type.NUMBER };
     const strArr = {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING },
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
     };
 
     const schema = {
-      type: SchemaType.OBJECT,
+      type: Type.OBJECT,
       properties: {
         cardTypes: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.STRING, enum: CARD_TYPES },
+          type: Type.ARRAY,
+          items: { type: Type.STRING, enum: CARD_TYPES },
         },
         intents: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.STRING, enum: INTENTS },
+          type: Type.ARRAY,
+          items: { type: Type.STRING, enum: INTENTS },
         },
         tags: strArr,
         searchTerm: str,
         dateRange: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
           properties: { start: str, end: str },
         },
         priceRange: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
           properties: { min: num, max: num },
         },
-        rating: { type: SchemaType.OBJECT, properties: { min: num } },
+        rating: { type: Type.OBJECT, properties: { min: num } },
       },
     };
 
-    const model = this.ai.getGenerativeModel({
+    const result = await this.ai.models.generateContent({
       model: 'gemini-2.0-flash',
-      generationConfig: {
+      contents: `Parse this search query into structured filters for a link-saving app. Today's date: ${new Date().toISOString().split('T')[0]}. Query: "${query}"`,
+      config: {
         responseMimeType: 'application/json',
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         responseSchema: schema as any,
       },
     });
 
-    const result = await model.generateContent(
-      `Parse this search query into structured filters for a link-saving app. Today's date: ${new Date().toISOString().split('T')[0]}. Query: "${query}"`,
-    );
-
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return JSON.parse(result.response.text() || '{}');
+    return JSON.parse(result.text || '{}');
   }
 
   private buildSchema() {
-    const str = { type: SchemaType.STRING };
-    const num = { type: SchemaType.NUMBER };
-    const bool = { type: SchemaType.BOOLEAN };
+    const str = { type: Type.STRING };
+    const num = { type: Type.NUMBER };
+    const bool = { type: Type.BOOLEAN };
     const strArr = {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING },
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
     };
 
     return {
-      type: SchemaType.OBJECT,
+      type: Type.OBJECT,
       properties: {
         description: str,
-        cardType: { type: SchemaType.STRING, enum: CARD_TYPES },
-        intent: { type: SchemaType.STRING, enum: INTENTS },
+        cardType: { type: Type.STRING, enum: CARD_TYPES },
+        intent: { type: Type.STRING, enum: INTENTS },
         tags: strArr,
         source: str,
         shoppingDetails: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
           nullable: true,
           properties: {
             price: str,
@@ -287,7 +282,7 @@ Page Text Excerpt: ${metadata?.rawText?.substring(0, 3000) || 'N/A'}`;
           },
         },
         recipeDetails: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
           nullable: true,
           properties: {
             ingredients: strArr,
@@ -301,12 +296,12 @@ Page Text Excerpt: ${metadata?.rawText?.substring(0, 3000) || 'N/A'}`;
           },
         },
         readLaterDetails: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
           nullable: true,
           properties: { author: str, readTime: str, subject: str },
         },
         travelDetails: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
           nullable: true,
           properties: {
             address: str,
@@ -319,7 +314,7 @@ Page Text Excerpt: ${metadata?.rawText?.substring(0, 3000) || 'N/A'}`;
           },
         },
         restaurantDetails: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
           nullable: true,
           properties: {
             address: str,
@@ -334,7 +329,7 @@ Page Text Excerpt: ${metadata?.rawText?.substring(0, 3000) || 'N/A'}`;
           },
         },
         healthFitnessDetails: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
           nullable: true,
           properties: {
             activityType: str,
@@ -345,7 +340,7 @@ Page Text Excerpt: ${metadata?.rawText?.substring(0, 3000) || 'N/A'}`;
           },
         },
         educationDetails: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
           nullable: true,
           properties: {
             topic: str,
@@ -356,7 +351,7 @@ Page Text Excerpt: ${metadata?.rawText?.substring(0, 3000) || 'N/A'}`;
           },
         },
         diyCraftsDetails: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
           nullable: true,
           properties: {
             projectType: str,
@@ -366,12 +361,12 @@ Page Text Excerpt: ${metadata?.rawText?.substring(0, 3000) || 'N/A'}`;
           },
         },
         parentingDetails: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
           nullable: true,
           properties: { activityType: str, ageGroup: str, itemsNeeded: strArr },
         },
         financeDetails: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
           nullable: true,
           properties: {
             category: str,
