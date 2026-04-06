@@ -1,6 +1,8 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenAI, Type } from '@google/genai';
+
+const GEMINI_URL =
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 const CARD_TYPES = [
   'SHOPPING',
@@ -31,11 +33,27 @@ const INTENTS = [
 
 @Injectable()
 export class LinksService {
-  private ai: GoogleGenAI | null = null;
+  private apiKey: string | null = null;
 
   constructor(config: ConfigService) {
-    const key = config.get<string>('GEMINI_API_KEY');
-    if (key) this.ai = new GoogleGenAI({ apiKey: key });
+    this.apiKey = config.get<string>('GEMINI_API_KEY') ?? null;
+  }
+
+  private async gemini(prompt: string, schema: object): Promise<Record<string, any>> {
+    const res = await fetch(`${GEMINI_URL}?key=${this.apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: schema,
+        },
+      }),
+    });
+    const data = await res.json() as Record<string, any>;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    return JSON.parse(data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}') as Record<string, any>;
   }
 
   async processLink(url: string) {
@@ -49,7 +67,7 @@ export class LinksService {
     const metadata = await this.fetchMetadata(url);
     const hostname = parsedUrl.hostname.replace('www.', '');
 
-    if (!this.ai) {
+    if (!this.apiKey) {
       return {
         url,
         cardType: 'OTHER',
@@ -70,18 +88,8 @@ Page Description: ${metadata?.description || 'N/A'}
 Site Name: ${metadata?.siteName || hostname}
 Page Text Excerpt: ${metadata?.rawText?.substring(0, 3000) || 'N/A'}`;
 
-    const result = await this.ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        responseSchema: this.buildSchema() as any,
-      },
-    });
-
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const p: Record<string, any> = JSON.parse(result.text || '{}');
+    const p = await this.gemini(prompt, this.buildSchema());
 
     /* eslint-disable @typescript-eslint/no-unsafe-assignment */
     return {
@@ -205,174 +213,121 @@ Page Text Excerpt: ${metadata?.rawText?.substring(0, 3000) || 'N/A'}`;
   }
 
   async parseSearchQuery(query: string) {
-    if (!this.ai) return { searchTerm: query };
-
-    const str = { type: Type.STRING };
-    const num = { type: Type.NUMBER };
-    const strArr = {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-    };
+    if (!this.apiKey) return { searchTerm: query };
 
     const schema = {
-      type: Type.OBJECT,
+      type: 'OBJECT',
       properties: {
-        cardTypes: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING, enum: CARD_TYPES },
-        },
-        intents: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING, enum: INTENTS },
-        },
-        tags: strArr,
-        searchTerm: str,
+        cardTypes: { type: 'ARRAY', items: { type: 'STRING', enum: CARD_TYPES } },
+        intents: { type: 'ARRAY', items: { type: 'STRING', enum: INTENTS } },
+        tags: { type: 'ARRAY', items: { type: 'STRING' } },
+        searchTerm: { type: 'STRING' },
         dateRange: {
-          type: Type.OBJECT,
-          properties: { start: str, end: str },
+          type: 'OBJECT',
+          properties: { start: { type: 'STRING' }, end: { type: 'STRING' } },
         },
         priceRange: {
-          type: Type.OBJECT,
-          properties: { min: num, max: num },
+          type: 'OBJECT',
+          properties: { min: { type: 'NUMBER' }, max: { type: 'NUMBER' } },
         },
-        rating: { type: Type.OBJECT, properties: { min: num } },
+        rating: { type: 'OBJECT', properties: { min: { type: 'NUMBER' } } },
       },
     };
 
-    const result = await this.ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: `Parse this search query into structured filters for a link-saving app. Today's date: ${new Date().toISOString().split('T')[0]}. Query: "${query}"`,
-      config: {
-        responseMimeType: 'application/json',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        responseSchema: schema as any,
-      },
-    });
-
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return JSON.parse(result.text || '{}');
+    return this.gemini(
+      `Parse this search query into structured filters for a link-saving app. Today's date: ${new Date().toISOString().split('T')[0]}. Query: "${query}"`,
+      schema,
+    );
   }
 
   private buildSchema() {
-    const str = { type: Type.STRING };
-    const num = { type: Type.NUMBER };
-    const bool = { type: Type.BOOLEAN };
-    const strArr = {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-    };
-
     return {
-      type: Type.OBJECT,
+      type: 'OBJECT',
       properties: {
-        description: str,
-        cardType: { type: Type.STRING, enum: CARD_TYPES },
-        intent: { type: Type.STRING, enum: INTENTS },
-        tags: strArr,
-        source: str,
+        description: { type: 'STRING' },
+        cardType: { type: 'STRING', enum: CARD_TYPES },
+        intent: { type: 'STRING', enum: INTENTS },
+        tags: { type: 'ARRAY', items: { type: 'STRING' } },
+        source: { type: 'STRING' },
         shoppingDetails: {
-          type: Type.OBJECT,
-          nullable: true,
+          type: 'OBJECT', nullable: true,
           properties: {
-            price: str,
-            rating: num,
-            reviewsCount: num,
-            topPositiveReview: str,
-            topNegativeReview: str,
+            price: { type: 'STRING' }, rating: { type: 'NUMBER' },
+            reviewsCount: { type: 'NUMBER' }, topPositiveReview: { type: 'STRING' },
+            topNegativeReview: { type: 'STRING' },
           },
         },
         recipeDetails: {
-          type: Type.OBJECT,
-          nullable: true,
+          type: 'OBJECT', nullable: true,
           properties: {
-            ingredients: strArr,
-            instructions: strArr,
-            prepTime: str,
-            cookTime: str,
-            totalTime: str,
-            servings: str,
-            difficulty: str,
-            calories: str,
+            ingredients: { type: 'ARRAY', items: { type: 'STRING' } },
+            instructions: { type: 'ARRAY', items: { type: 'STRING' } },
+            prepTime: { type: 'STRING' }, cookTime: { type: 'STRING' },
+            totalTime: { type: 'STRING' }, servings: { type: 'STRING' },
+            difficulty: { type: 'STRING' }, calories: { type: 'STRING' },
           },
         },
         readLaterDetails: {
-          type: Type.OBJECT,
-          nullable: true,
-          properties: { author: str, readTime: str, subject: str },
+          type: 'OBJECT', nullable: true,
+          properties: { author: { type: 'STRING' }, readTime: { type: 'STRING' }, subject: { type: 'STRING' } },
         },
         travelDetails: {
-          type: Type.OBJECT,
-          nullable: true,
+          type: 'OBJECT', nullable: true,
           properties: {
-            address: str,
-            googleMapsUrl: str,
-            category: str,
-            rating: num,
-            phoneNumber: str,
-            ticketPrice: str,
-            openingHours: strArr,
+            address: { type: 'STRING' }, googleMapsUrl: { type: 'STRING' },
+            category: { type: 'STRING' }, rating: { type: 'NUMBER' },
+            phoneNumber: { type: 'STRING' }, ticketPrice: { type: 'STRING' },
+            openingHours: { type: 'ARRAY', items: { type: 'STRING' } },
           },
         },
         restaurantDetails: {
-          type: Type.OBJECT,
-          nullable: true,
+          type: 'OBJECT', nullable: true,
           properties: {
-            address: str,
-            googleMapsUrl: str,
-            category: str,
-            rating: num,
-            phoneNumber: str,
-            reservationLink: str,
-            priceLevel: str,
-            cuisine: strArr,
-            openingHours: strArr,
+            address: { type: 'STRING' }, googleMapsUrl: { type: 'STRING' },
+            category: { type: 'STRING' }, rating: { type: 'NUMBER' },
+            phoneNumber: { type: 'STRING' }, reservationLink: { type: 'STRING' },
+            priceLevel: { type: 'STRING' },
+            cuisine: { type: 'ARRAY', items: { type: 'STRING' } },
+            openingHours: { type: 'ARRAY', items: { type: 'STRING' } },
           },
         },
         healthFitnessDetails: {
-          type: Type.OBJECT,
-          nullable: true,
+          type: 'OBJECT', nullable: true,
           properties: {
-            activityType: str,
-            duration: str,
-            difficulty: str,
-            caloriesBurned: str,
-            equipmentNeeded: strArr,
+            activityType: { type: 'STRING' }, duration: { type: 'STRING' },
+            difficulty: { type: 'STRING' }, caloriesBurned: { type: 'STRING' },
+            equipmentNeeded: { type: 'ARRAY', items: { type: 'STRING' } },
           },
         },
         educationDetails: {
-          type: Type.OBJECT,
-          nullable: true,
+          type: 'OBJECT', nullable: true,
           properties: {
-            topic: str,
-            level: str,
-            provider: str,
-            duration: str,
-            certification: bool,
+            topic: { type: 'STRING' }, level: { type: 'STRING' },
+            provider: { type: 'STRING' }, duration: { type: 'STRING' },
+            certification: { type: 'BOOLEAN' },
           },
         },
         diyCraftsDetails: {
-          type: Type.OBJECT,
-          nullable: true,
+          type: 'OBJECT', nullable: true,
           properties: {
-            projectType: str,
-            materials: strArr,
-            estimatedTime: str,
-            difficulty: str,
+            projectType: { type: 'STRING' },
+            materials: { type: 'ARRAY', items: { type: 'STRING' } },
+            estimatedTime: { type: 'STRING' }, difficulty: { type: 'STRING' },
           },
         },
         parentingDetails: {
-          type: Type.OBJECT,
-          nullable: true,
-          properties: { activityType: str, ageGroup: str, itemsNeeded: strArr },
+          type: 'OBJECT', nullable: true,
+          properties: {
+            activityType: { type: 'STRING' }, ageGroup: { type: 'STRING' },
+            itemsNeeded: { type: 'ARRAY', items: { type: 'STRING' } },
+          },
         },
         financeDetails: {
-          type: Type.OBJECT,
-          nullable: true,
+          type: 'OBJECT', nullable: true,
           properties: {
-            category: str,
-            promoCode: str,
-            expiryDate: str,
-            savings: str,
+            category: { type: 'STRING' }, promoCode: { type: 'STRING' },
+            expiryDate: { type: 'STRING' }, savings: { type: 'STRING' },
           },
         },
       },
