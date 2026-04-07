@@ -71,20 +71,19 @@ export const Card: React.FC<CardProps> = ({ card, onCardClick, onUpdateCard, onS
 
   if (layout === 'list') {
       return (
-        <div 
+        <div
             onClick={() => onCardClick(card)}
-            className="group relative w-full bg-gray-800/40 border border-white/5 rounded-xl overflow-hidden cursor-pointer hover:bg-gray-800/80 transition-colors duration-200 flex h-32 md:h-36 shadow-sm hover:shadow-md"
+            className="group relative w-full bg-white border border-zinc-100 rounded-2xl overflow-hidden cursor-pointer hover:border-primary/40 hover:shadow-md transition-all duration-200 flex h-32 md:h-36 shadow-sm"
         >
             {/* Left: Image */}
-            <div className="w-32 md:w-48 h-full flex-shrink-0 relative">
-                 <img 
-                    src={card.imageUrl} 
-                    alt={card.title} 
+            <div className="w-32 md:w-48 h-full flex-shrink-0 relative overflow-hidden">
+                 <img
+                    src={card.imageUrl}
+                    alt={card.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                  />
-                 <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
                  {/* Type Icon Overlay */}
-                 <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-md p-1.5 rounded-lg text-white">
+                 <div className="absolute top-2 left-2 bg-white/20 backdrop-blur-md p-1.5 rounded-xl text-white border border-white/30">
                     <Icon className="w-3.5 h-3.5" />
                  </div>
             </div>
@@ -93,33 +92,33 @@ export const Card: React.FC<CardProps> = ({ card, onCardClick, onUpdateCard, onS
             <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
                 <div>
                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
-                             <span className="font-semibold uppercase tracking-wider text-primary-400">{card.source}</span>
-                             <span>•</span>
-                             <span>{new Date(card.date).toLocaleDateString()}</span>
+                        <div className="flex items-center gap-2 text-xs">
+                             <span className="font-black uppercase tracking-wider text-accent">{card.source}</span>
+                             <span className="text-zinc-300">•</span>
+                             <span className="text-zinc-400">{new Date(card.date).toLocaleDateString()}</span>
                         </div>
                         {/* Actions Row */}
                         <div className="flex items-center gap-1">
-                            <button 
-                                onClick={handleShare} 
-                                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                            <button
+                                onClick={handleShare}
+                                className="p-1.5 text-zinc-400 hover:text-primary hover:bg-primary/5 rounded-full transition-all opacity-0 group-hover:opacity-100"
                             >
                                 <ShareIcon className="w-4 h-4" />
                             </button>
-                            <button 
-                                onClick={handleFavorite} 
-                                className={`p-1.5 rounded-full transition-all ${card.isFavorite ? 'text-red-500 opacity-100' : 'text-gray-400 hover:text-red-500 hover:bg-gray-700 opacity-0 group-hover:opacity-100'}`}
+                            <button
+                                onClick={handleFavorite}
+                                className={`p-1.5 rounded-full transition-all ${card.isFavorite ? 'text-red-500 opacity-100' : 'text-zinc-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100'}`}
                             >
                                 <HeartIcon className="w-4 h-4" filled={card.isFavorite} />
                             </button>
                         </div>
                      </div>
-                     <h3 className="text-white font-bold text-base md:text-lg leading-tight line-clamp-1 mb-1 group-hover:text-primary-200 transition-colors">{card.title}</h3>
-                     <p className="text-gray-400 text-sm line-clamp-2 leading-relaxed">{card.description}</p>
+                     <h3 className="text-zinc-900 font-bold text-base leading-tight line-clamp-1 mb-1 group-hover:text-primary transition-colors">{card.title}</h3>
+                     <p className="text-zinc-500 text-sm line-clamp-2 leading-relaxed">{card.description}</p>
                 </div>
                 {card.shoppingDetails?.price && (
                     <div className="flex items-center mt-auto">
-                        <span className="text-green-400 font-bold text-sm">{card.shoppingDetails.price}</span>
+                        <span className="text-secondary font-bold text-sm">{card.shoppingDetails.price}</span>
                     </div>
                 )}
             </div>
@@ -131,8 +130,8 @@ export const Card: React.FC<CardProps> = ({ card, onCardClick, onUpdateCard, onS
   const isMasonry = layout === 'masonry';
   
   const containerClasses = isMasonry
-    ? "group relative w-full rounded-2xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 bg-gray-900 border border-white/5"
-    : "group relative aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 bg-gray-900 border border-white/5";
+    ? "group relative w-full rounded-2xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 bg-white border border-zinc-100 hover:border-primary/50"
+    : "group relative aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 bg-white border border-zinc-100 hover:border-primary/50";
 
   const imgClasses = isMasonry
     ? "w-full h-auto object-cover block transition-transform duration-700 group-hover:scale-105"
@@ -181,11 +180,14 @@ export const Card: React.FC<CardProps> = ({ card, onCardClick, onUpdateCard, onS
          </button>
       </div>
 
-      {/* Bottom: Title */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-300 z-10">
-        <h3 className="text-white font-bold text-sm leading-snug line-clamp-3 text-shadow-sm group-hover:text-primary-200 transition-colors">
+      {/* Bottom: Title + Source */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+        <h3 className="text-white font-bold text-sm leading-snug line-clamp-3 drop-shadow-md">
           {card.title}
         </h3>
+        {card.source && (
+          <p className="text-[10px] font-black uppercase tracking-widest mt-1 text-accent">{card.source}</p>
+        )}
       </div>
     </div>
   );

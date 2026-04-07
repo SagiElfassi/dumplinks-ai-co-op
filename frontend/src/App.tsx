@@ -9,11 +9,17 @@ import * as authService from './services/authService';
 import { LandingPage } from './components/LandingPage';
 import { ProfileModal } from './components/ProfileModal';
 import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
-import { PlusIcon } from './components/icons/MiniIcons';
 import { Toast } from './components/Toast';
 import type { ToastType } from './components/Toast';
 
 const CARDS_PER_PAGE = 8;
+
+function getGreeting(name?: string): string {
+  const hour = new Date().getHours();
+  const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+  const firstName = name?.split(' ')[0] || name || 'there';
+  return `Good ${timeOfDay}, ${firstName}`;
+}
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -23,7 +29,6 @@ const App: React.FC = () => {
   }, []);
 
   const [allCards, setAllCards] = useState<CardData[]>([]);
-
   const [visibleCardCount, setVisibleCardCount] = useState(CARDS_PER_PAGE);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSearching, setIsSearching] = useState<boolean>(false);
@@ -32,6 +37,7 @@ const App: React.FC = () => {
   const [activeCardType, setActiveCardType] = useState<CardType | null>(null);
   const [smartFilters, setSmartFilters] = useState<SearchFilters | null>(null);
   const [activeSearchQuery, setActiveSearchQuery] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCard, setSelectedCard] = useState<CardData | null>(null);
   const [groupBy, setGroupBy] = useState<GroupByOption>('none');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -39,13 +45,12 @@ const App: React.FC = () => {
   const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [showFab, setShowFab] = useState(false);
+  const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
 
   const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
     message: '', type: 'info', isVisible: false,
   });
 
-  const inputSectionRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -61,17 +66,12 @@ const App: React.FC = () => {
   const closeToast = () => setToast(prev => ({ ...prev, isVisible: false }));
 
   useEffect(() => {
-    const handleScroll = () => setShowFab(window.scrollY > 300);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         handleCloseModal();
         setIsProfileModalOpen(false);
         setIsConfirmDeleteModalOpen(false);
+        setIsAddLinkOpen(false);
       }
       if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
         event.preventDefault();
@@ -125,6 +125,7 @@ const App: React.FC = () => {
       const newCardData = await processLink(url);
       const saved = await addCard({ ...newCardData, id: Date.now().toString(), date: new Date().toISOString() });
       setAllCards(prev => [saved, ...prev]);
+      setIsAddLinkOpen(false);
       showToast('Link dumped successfully!', 'success');
     } catch {
       setError('Failed to process the link. Please try a different URL.');
@@ -132,14 +133,6 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleFabClick = () => {
-    inputSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => {
-      const input = inputSectionRef.current?.querySelector('input');
-      input?.focus();
-    }, 500);
   };
 
   const parsePrice = (priceStr?: string): number | null => {
@@ -224,8 +217,14 @@ const App: React.FC = () => {
   const clearSearch = () => {
     setSmartFilters(null);
     setActiveSearchQuery(null);
+    setSearchQuery('');
     setError(null);
     setVisibleCardCount(CARDS_PER_PAGE);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSearch(searchQuery);
   };
 
   const handleCardTypeClick = (cardType: CardType | null) => {
@@ -268,13 +267,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 relative overflow-x-hidden">
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-primary-900/20 rounded-full filter blur-3xl animate-blob"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent-purple/20 rounded-full filter blur-3xl animate-blob" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-accent-blue/10 rounded-full filter blur-3xl animate-blob" style={{ animationDelay: '4s' }}></div>
-      </div>
-
+    <div className="min-h-screen bg-white text-zinc-900">
       <Header
         user={currentUser}
         onLogout={handleLogout}
@@ -282,49 +275,109 @@ const App: React.FC = () => {
         onDeleteAccount={() => setIsConfirmDeleteModalOpen(true)}
       />
 
-      <main className="container mx-auto p-4 md:p-8 relative z-10">
-        <div ref={inputSectionRef} className="pt-6 pb-1 md:pt-8 md:pb-2 text-center max-w-3xl mx-auto relative">
-          <div className="relative z-20">
-            <LinkInputForm onSubmit={handleAddLink} isLoading={isLoading} isEmpty={allCards.length === 0} />
-          </div>
-          {error && (
-            <div className="mt-4">
-              <p className="text-red-400 bg-red-900/20 border border-red-500/20 rounded-lg py-2 px-4 inline-block">{error}</p>
+      <main className="pt-20 px-6 pb-20 max-w-[1920px] mx-auto">
+        {/* Greeting */}
+        <div className="pt-8 mb-8">
+          <h1 className="text-3xl font-bold font-['Space_Grotesk'] text-zinc-900">
+            {getGreeting(currentUser.name)}
+          </h1>
+        </div>
+
+        {/* Search + Dump Link Row */}
+        <div className="mb-10 flex flex-col md:flex-row items-stretch gap-4">
+          {/* AI Search bar */}
+          <form onSubmit={handleSearchSubmit} className="relative flex-grow group">
+            <svg
+              xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"
+              className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-primary pointer-events-none"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+            </svg>
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder='Search your brain with AI (e.g., "dinner ideas")...'
+              className="w-full bg-white border border-zinc-200 pl-14 pr-24 py-5 rounded-2xl text-base font-medium focus:ring-4 focus:ring-primary/10 focus:border-primary placeholder-zinc-400 outline-none transition-all shadow-sm hover:shadow-md"
+              disabled={isSearching}
+            />
+            <div className="absolute right-5 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              {isSearching ? (
+                <svg className="animate-spin h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-2 py-1 bg-zinc-100 rounded-md">
+                  Cmd+K
+                </span>
+              )}
             </div>
-          )}
+          </form>
+
+          {/* Dump Link button */}
+          <button
+            onClick={() => setIsAddLinkOpen(prev => !prev)}
+            className="flex items-center justify-center gap-2 bg-gradient-to-r from-secondary via-secondary to-primary text-white px-8 py-5 rounded-2xl font-['Space_Grotesk'] font-bold tracking-wider shadow-[0_10px_30px_-5px_rgba(118,200,147,0.4)] hover:shadow-[0_15px_40px_-5px_rgba(147,129,255,0.4)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 whitespace-nowrap"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            <span className="text-sm uppercase">Dump Link</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 opacity-80">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+            </svg>
+          </button>
         </div>
 
-        <div className="mt-0 min-h-[600px]">
-          <CardGrid
-            cards={visibleCards}
-            isLoading={isLoading && allCards.length === 0}
-            isSearching={isSearching}
-            onSearch={handleSearch}
-            onClearSearch={clearSearch}
-            activeSearchQuery={activeSearchQuery}
-            onCardClick={handleCardClick}
-            onLoadMore={handleLoadMore}
-            isFetchingMore={isFetchingMore}
-            hasMore={isEndlessScrollActive && hasMoreCards}
-            activeCardType={activeCardType}
-            onCardTypeClick={handleCardTypeClick}
-            onUpdateCard={handleUpdateCard}
-            onShowToast={showToast}
-            searchInputRef={searchInputRef}
-            groupBy={groupBy}
-            onGroupByChange={setGroupBy}
-            showFavoritesOnly={showFavoritesOnly}
-            onToggleFavorites={handleToggleFavorites}
-          />
-        </div>
+        {/* Active search results indicator */}
+        {activeSearchQuery && (
+          <div className="mb-4 flex items-center gap-2 text-sm">
+            <span className="text-zinc-500">Results for: <span className="font-semibold text-zinc-800">"{activeSearchQuery}"</span></span>
+            <button onClick={clearSearch} className="text-primary hover:underline font-medium">Clear</button>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-4">
+            <p className="text-red-600 bg-red-50 border border-red-200 rounded-xl py-2 px-4 inline-block text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Add Link inline panel */}
+        {isAddLinkOpen && (
+          <div className="mb-8 p-5 bg-zinc-50 border border-zinc-200 rounded-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-zinc-800 font-['Space_Grotesk']">Dump a new link</h3>
+              <button onClick={() => setIsAddLinkOpen(false)} className="text-zinc-400 hover:text-zinc-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <LinkInputForm onSubmit={handleAddLink} isLoading={isLoading} />
+          </div>
+        )}
+
+        {/* Card Grid with filter chips */}
+        <CardGrid
+          cards={visibleCards}
+          isLoading={isLoading && allCards.length === 0}
+          isFetchingMore={isFetchingMore}
+          hasMore={isEndlessScrollActive && hasMoreCards}
+          onCardClick={handleCardClick}
+          onLoadMore={handleLoadMore}
+          activeCardType={activeCardType}
+          onCardTypeClick={handleCardTypeClick}
+          onUpdateCard={handleUpdateCard}
+          onShowToast={showToast}
+          groupBy={groupBy}
+          onGroupByChange={setGroupBy}
+          showFavoritesOnly={showFavoritesOnly}
+          onToggleFavorites={handleToggleFavorites}
+        />
       </main>
-
-      <button
-        onClick={handleFabClick}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 bg-primary-600 rounded-full shadow-2xl flex items-center justify-center text-white transition-all duration-300 hover:bg-primary-500 hover:scale-110 active:scale-95 ${showFab ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'}`}
-      >
-        <PlusIcon className="w-8 h-8" />
-      </button>
 
       <Toast message={toast.message} type={toast.type} isVisible={toast.isVisible} onClose={closeToast} />
 

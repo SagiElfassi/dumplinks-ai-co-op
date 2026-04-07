@@ -23,7 +23,7 @@ const SearchIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 
 const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
     <div className="bg-white/5 p-6 rounded-2xl border border-white/10 backdrop-blur-lg h-full hover:bg-white/10 transition-colors">
-        <div className="bg-primary-500/10 text-primary-400 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+        <div className="bg-primary/10 text-primary w-12 h-12 rounded-lg flex items-center justify-center mb-4">
             {icon}
         </div>
         <h3 className="text-xl font-semibold text-white mb-2">{title}</h3>
@@ -37,8 +37,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister })
     <div className="min-h-screen bg-gray-900 text-white font-sans overflow-x-hidden">
         {/* Abstract background */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-            <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-primary-900/50 rounded-full filter blur-3xl animate-pulse"></div>
-            <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-accent-purple/20 rounded-full filter blur-3xl animate-pulse animation-delay-4000"></div>
+            <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-primary/20 rounded-full filter blur-3xl animate-pulse"></div>
+            <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-secondary/20 rounded-full filter blur-3xl animate-pulse"></div>
         </div>
 
         <main className="relative z-10 container mx-auto px-4 md:px-8">
@@ -58,7 +58,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister })
                         <h1 className="text-4xl md:text-6xl font-bold tracking-tighter mb-4">
                             Stop Losing Links.
                             <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-accent-yellow">Rediscover Your Digital World.</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Rediscover Your Digital World.</span>
                         </h1>
                         <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-xl mx-auto md:mx-0">
                             DumpLinks uses AI to instantly save, summarize, and organize any link into a beautiful library. Effortlessly find what you've saved, whenever you need it.

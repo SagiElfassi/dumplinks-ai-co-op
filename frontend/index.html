@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
@@ -7,69 +7,60 @@
     <title>DumpLinks</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
-        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
-              sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+              sans: ['Manrope', 'sans-serif'],
             },
             colors: {
-              gray: {
-                700: '#475569',
-                750: '#3b485d',
-                800: '#252f45',
-                850: '#1f293a',
-                900: '#1a2333',
-                950: '#0f172a',
-              },
-              primary: {
-                '50': '#fdf4ff',
-                '100': '#fae8ff',
-                '200': '#f5d0fe',
-                '300': '#f0abfc',
-                '400': '#e879f9',
-                '500': '#d946ef',
-                '600': '#c026d3',
-                '700': '#a21caf',
-                '800': '#86198f',
-                '900': '#701a75',
-                '950': '#4a044e',
-              },
-              accent: {
-                yellow: '#FFD166',
-                green: '#10B981',
-                purple: '#8B5CF6',
-                blue: '#3B82F6',
-              }
+              primary: '#9381ff',
+              'primary-dark': '#5d4ac5',
+              secondary: '#76c893',
+              accent: '#e78152',
             },
-            animation: {
-              'blob': 'blob 7s infinite',
+            borderRadius: {
+              DEFAULT: '16px',
+              lg: '16px',
+              xl: '20px',
+              '2xl': '24px',
+              full: '9999px',
             },
-            keyframes: {
-              blob: {
-                '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-                '100%': { transform: 'translate(0px, 0px) scale(1)' },
-              }
-            }
           }
         }
       }
     </script>
     <style>
-      ::-webkit-scrollbar { width: 10px; height: 10px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #252f45; border-radius: 5px; border: 2px solid #1a2333; }
-      ::-webkit-scrollbar-thumb:hover { background: #3b485d; }
-      * { scrollbar-width: thin; scrollbar-color: #252f45 transparent; }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        font-family: 'Material Symbols Outlined';
+        font-style: normal;
+        display: inline-block;
+        line-height: 1;
+        text-transform: none;
+        letter-spacing: normal;
+        word-wrap: normal;
+        white-space: nowrap;
+        direction: ltr;
+      }
+      .masonry-grid {
+        column-count: 1;
+        column-gap: 1.25rem;
+      }
+      @media (min-width: 640px) { .masonry-grid { column-count: 2; } }
+      @media (min-width: 1024px) { .masonry-grid { column-count: 3; } }
+      @media (min-width: 1280px) { .masonry-grid { column-count: 4; } }
+      @media (min-width: 1536px) { .masonry-grid { column-count: 5; } }
+      .masonry-item { break-inside: avoid; margin-bottom: 1.25rem; }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
   </head>
-  <body class="bg-gray-900 text-gray-100 antialiased selection:bg-primary-500 selection:text-white">
+  <body class="bg-white text-zinc-900 antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
