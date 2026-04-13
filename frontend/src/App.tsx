@@ -349,6 +349,7 @@ const App: React.FC = () => {
         {/* Card Grid with filter chips */}
         <CardGrid
           cards={visibleCards}
+          totalCount={filteredCards.length}
           isLoading={isLoading && allCards.length === 0}
           isFetchingMore={isFetchingMore}
           hasMore={isEndlessScrollActive && hasMoreCards}

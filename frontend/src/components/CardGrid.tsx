@@ -28,6 +28,7 @@ import type { ToastType } from './Toast';
 
 interface CardGridProps {
   cards: CardData[];
+  totalCount: number;
   isLoading: boolean;
   isFetchingMore: boolean;
   hasMore: boolean;
@@ -70,6 +71,7 @@ const DROPDOWN_ORDER: GroupByOption[] = ['none', 'list', 'topic', 'date'];
 
 export const CardGrid: React.FC<CardGridProps> = ({
   cards,
+  totalCount,
   isLoading,
   isFetchingMore,
   hasMore,
@@ -153,7 +155,7 @@ export const CardGrid: React.FC<CardGridProps> = ({
 
     if (groupedCards) {
       return (
-        <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-5 space-y-5">
+        <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-5 2xl:columns-6 gap-5 space-y-5">
           {Object.entries(groupedCards).map(([groupKey, data]) => {
             const groupCards = data as CardData[];
             const count = groupCards.length;
@@ -219,7 +221,8 @@ export const CardGrid: React.FC<CardGridProps> = ({
     <div>
       {/* Filter chips + View controls */}
       <div className="sticky top-[73px] z-30 -mx-6 px-6 py-3 bg-white/90 backdrop-blur-xl border-b border-zinc-100 mb-6">
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide items-center">
+        <div className="flex gap-3 overflow-x-auto scrollbar-hide items-center justify-between">
+        <div className="flex gap-3 overflow-x-auto scrollbar-hide items-center flex-1 min-w-0">
 
           {/* View dropdown */}
           <div className="relative flex-shrink-0" ref={viewMenuRef}>
@@ -282,6 +285,14 @@ export const CardGrid: React.FC<CardGridProps> = ({
             );
           })}
         </div>
+
+        {/* Item count */}
+        {!isLoading && (
+          <span className="flex-shrink-0 text-xs font-bold font-['Space_Grotesk'] uppercase tracking-widest text-zinc-400 pl-4 whitespace-nowrap">
+            {totalCount} {totalCount === 1 ? 'Item' : 'Items'}
+          </span>
+        )}
+        </div>
       </div>
 
       {/* Main content */}
@@ -303,7 +314,9 @@ export const CardGrid: React.FC<CardGridProps> = ({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
             </svg>
           </div>
-          <h3 className="text-xl font-bold text-zinc-700 font-['Space_Grotesk']">No dumps found</h3>
+          <h3 className="text-xl font-bold text-zinc-700 font-['Space_Grotesk']">
+            {activeCardType || showFavoritesOnly ? 'No dumps found' : 'No dumps yet'}
+          </h3>
           <p className="text-zinc-400 mt-2 text-sm">
             {activeCardType || showFavoritesOnly ? 'Try adjusting your filters.' : 'Click "Dump Link" above to start your collection.'}
           </p>
